@@ -111,6 +111,7 @@ const Finanzen = (() => {
   content.addEventListener("click", async (e) => {
     const del = e.target.closest("[data-delete-finance]");
     if (!del) return;
+    if (!confirm("Diesen Eintrag wirklich löschen?")) return;
     await DB.delete("finances", Number(del.dataset.deleteFinance));
     await refresh();
   });

@@ -101,7 +101,7 @@ const Fahrten = (() => {
     document.getElementById("f-photos").addEventListener("change", async (e) => {
       const files = Array.from(e.target.files);
       for (const file of files) {
-        const dataUrl = await UI.fileToDataUrl(file);
+        const dataUrl = await UI.compressImage(file);
         pendingPhotos.push(dataUrl);
       }
       renderPhotoPreview();

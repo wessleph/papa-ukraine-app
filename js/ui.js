@@ -19,9 +19,15 @@ const UI = (() => {
     if (e.target === overlay) close();
   });
 
-  confirmBtn.addEventListener("click", () => {
+  confirmBtn.addEventListener("click", async () => {
     if (onConfirm) {
-      const result = onConfirm();
+      confirmBtn.disabled = true;
+      let result;
+      try {
+        result = await onConfirm();
+      } finally {
+        confirmBtn.disabled = false;
+      }
       if (result === false) return; // Validierung fehlgeschlagen, Modal offen lassen
     }
     close();
@@ -58,14 +64,35 @@ const UI = (() => {
     return new Date(d.getTime() - tz * 60000).toISOString().slice(0, 10);
   }
 
-  function fileToDataUrl(file) {
+  function compressImage(file, maxDimension = 1280, quality = 0.8) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
       reader.onerror = reject;
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round(height * (maxDimension / width));
+              width = maxDimension;
+            } else {
+              width = Math.round(width * (maxDimension / height));
+              height = maxDimension;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = reader.result;
+      };
       reader.readAsDataURL(file);
     });
   }
 
-  return { open, close, escapeHtml, formatDate, formatCurrency, todayIso, fileToDataUrl };
+  return { open, close, escapeHtml, formatDate, formatCurrency, todayIso, compressImage };
 })();

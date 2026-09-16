@@ -120,6 +120,7 @@ const Checklist = (() => {
   }
 
   async function onDeleteItem(catId, itemId) {
+    if (!confirm("Diese Position wirklich löschen?")) return;
     const cat = findCategory(catId);
     cat.items = cat.items.filter((i) => i.id !== itemId);
     await saveCategory(cat);

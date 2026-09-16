@@ -1,5 +1,8 @@
-// Cache-first Service Worker für vollständige Offline-Nutzung des App-Shells.
-const CACHE_NAME = "ua-hilfe-shell-v5";
+// Stale-while-revalidate Service Worker: App-Shell startet sofort aus dem Cache
+// (auch offline), im Hintergrund wird bei bestehender Verbindung automatisch
+// aktualisiert. Dadurch ist ein manuelles Hochzählen von CACHE_NAME bei
+// Code-Änderungen an bestehenden Dateien nicht mehr nötig.
+const CACHE_NAME = "ua-hilfe-shell-v6";
 
 const SHELL_FILES = [
   "./",
@@ -44,17 +47,24 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
+
+      // cache: "reload" erzwingt einen echten Netzwerk-Request statt einer
+      // Antwort aus dem HTTP-Cache des Browsers, damit Änderungen zuverlässig
+      // erkannt werden.
+      const networkFetch = fetch(new Request(event.request, { cache: "reload" }))
         .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
+          if (response.ok) cache.put(event.request, response.clone());
           return response;
         })
-        .catch(() => cached);
+        .catch(() => null);
+
+      if (cached) {
+        networkFetch; // Cache im Hintergrund aktualisieren, aber nicht abwarten
+        return cached;
+      }
+      return (await networkFetch) || Response.error();
     })
   );
 });

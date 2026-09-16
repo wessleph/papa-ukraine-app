@@ -110,6 +110,7 @@ const Tracker = (() => {
   content.addEventListener("click", async (e) => {
     const del = e.target.closest("[data-delete-donation]");
     if (!del) return;
+    if (!confirm("Diesen Spenden-Eintrag wirklich löschen?")) return;
     await DB.delete("donations", Number(del.dataset.deleteDonation));
     await refresh();
   });

@@ -125,6 +125,7 @@ const Notfall = (() => {
   content.addEventListener("click", async (e) => {
     const del = e.target.closest("[data-delete-contact]");
     if (!del) return;
+    if (!confirm("Diesen Kontakt wirklich löschen?")) return;
     await DB.delete("contacts", Number(del.dataset.deleteContact));
     await refresh();
   });
