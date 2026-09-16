@@ -1,7 +1,6 @@
 // Spendengelder-Tracker: Einnahmen (Geldspenden) und Ausgaben in einer gemeinsamen Liste.
 const Finanzen = (() => {
   const statsBox = document.getElementById("finanzen-stats");
-  const chartBox = document.getElementById("finanzen-chart");
   const content = document.getElementById("finanzen-content");
   const addBtn = document.getElementById("btn-add-finanzen");
 
@@ -37,8 +36,6 @@ const Finanzen = (() => {
       </div>
     `;
 
-    renderChart();
-
     if (entries.length === 0) {
       content.innerHTML = '<p class="empty-state">Noch keine Einnahmen oder Ausgaben erfasst.</p>';
       return;
@@ -59,46 +56,6 @@ const Finanzen = (() => {
             <button class="icon-btn" data-delete-finance="${e.id}" title="Eintrag löschen">✕</button>
           </div>
         `).join("")}
-      </div>
-    `;
-  }
-
-  function renderChart() {
-    const expenses = entries.filter((e) => e.type === "ausgabe");
-    if (expenses.length === 0) {
-      chartBox.innerHTML = "";
-      return;
-    }
-
-    const byMonth = {};
-    expenses.forEach((e) => {
-      const key = e.date.slice(0, 7); // YYYY-MM
-      byMonth[key] = (byMonth[key] || 0) + e.amount;
-    });
-
-    const months = Object.keys(byMonth).sort();
-    const maxAmount = Math.max(...months.map((m) => byMonth[m]));
-    const maxBarHeight = 110;
-
-    const bars = months.map((m) => {
-      const value = byMonth[m];
-      const heightPx = Math.max(3, Math.round((value / maxAmount) * maxBarHeight));
-      const [year, month] = m.split("-");
-      const label = new Date(Number(year), Number(month) - 1, 1)
-        .toLocaleDateString("de-DE", { month: "short", year: "2-digit" });
-      return `
-        <div class="bar-col">
-          <div class="bar-col__value">${UI.formatCurrency(value)}</div>
-          <div class="bar-col__bar" style="height:${heightPx}px"></div>
-          <div class="bar-col__label">${label}</div>
-        </div>
-      `;
-    }).join("");
-
-    chartBox.innerHTML = `
-      <div class="chart-card">
-        <h4 class="chart-card__title">Ausgaben pro Monat</h4>
-        <div class="bar-chart">${bars}</div>
       </div>
     `;
   }
