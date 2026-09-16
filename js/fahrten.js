@@ -6,6 +6,12 @@ const Fahrten = (() => {
   let trips = [];
   let pendingPhotos = [];
 
+  const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let isRecording = false;
+  let recordingBaseText = "";
+  let recordingFinalText = "";
+
   async function load() {
     trips = await DB.getAll("trips");
     render();
@@ -60,7 +66,11 @@ const Fahrten = (() => {
         </div>
         <div class="form-row">
           <label>Notizen</label>
-          <textarea id="f-notes" placeholder="Beladung, Besonderheiten, Kontakte vor Ort…"></textarea>
+          <div class="textarea-with-mic">
+            <textarea id="f-notes" placeholder="Beladung, Besonderheiten, Kontakte vor Ort…"></textarea>
+            ${SpeechRecognitionApi ? '<button type="button" id="f-mic-btn" class="mic-btn" title="Diktieren">🎤</button>' : ""}
+          </div>
+          ${SpeechRecognitionApi ? '<p class="mic-hint">Mikrofon antippen und sprechen, um den Bericht einzusprechen.</p>' : ""}
         </div>
         <div class="form-row">
           <label>Fotos (optional)</label>
@@ -77,11 +87,16 @@ const Fahrten = (() => {
           alert("Bitte Ziel / Route angeben.");
           return false;
         }
+        if (isRecording) recognition.stop();
         await DB.add("trips", { date, destination, notes, photos: pendingPhotos });
         pendingPhotos = [];
         await refresh();
       }
     });
+
+    document.getElementById("modal-cancel").addEventListener("click", () => {
+      if (isRecording) recognition.stop();
+    }, { once: true });
 
     document.getElementById("f-photos").addEventListener("change", async (e) => {
       const files = Array.from(e.target.files);
@@ -91,6 +106,53 @@ const Fahrten = (() => {
       }
       renderPhotoPreview();
     });
+
+    const micBtn = document.getElementById("f-mic-btn");
+    if (micBtn) micBtn.addEventListener("click", () => toggleDictation(micBtn));
+  }
+
+  function toggleDictation(micBtn) {
+    const textarea = document.getElementById("f-notes");
+    if (isRecording) {
+      recognition.stop();
+      return;
+    }
+
+    if (!recognition) {
+      recognition = new SpeechRecognitionApi();
+      recognition.lang = "de-DE";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            recordingFinalText += transcript + " ";
+          } else {
+            interim += transcript;
+          }
+        }
+        textarea.value = recordingBaseText + recordingFinalText + interim;
+      };
+
+      recognition.onerror = () => {
+        isRecording = false;
+        micBtn.classList.remove("recording");
+      };
+
+      recognition.onend = () => {
+        isRecording = false;
+        micBtn.classList.remove("recording");
+      };
+    }
+
+    recordingBaseText = textarea.value ? textarea.value.trim() + " " : "";
+    recordingFinalText = "";
+    isRecording = true;
+    micBtn.classList.add("recording");
+    recognition.start();
   }
 
   content.addEventListener("click", async (e) => {
