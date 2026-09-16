@@ -1,7 +1,7 @@
 // Kleine Promise-Wrapper-Schicht über IndexedDB. Alle Daten bleiben lokal im Browser.
 const DB = (() => {
   const DB_NAME = "ukraineHilfeDB";
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   let dbPromise = null;
 
   function open() {
@@ -21,6 +21,9 @@ const DB = (() => {
         }
         if (!db.objectStoreNames.contains("contacts")) {
           db.createObjectStore("contacts", { keyPath: "id", autoIncrement: true });
+        }
+        if (!db.objectStoreNames.contains("finances")) {
+          db.createObjectStore("finances", { keyPath: "id", autoIncrement: true });
         }
       };
       req.onsuccess = () => resolve(req.result);

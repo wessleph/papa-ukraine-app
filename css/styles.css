@@ -211,6 +211,19 @@ button, input, select, textarea {
 }
 
 /* ---------- tracker ---------- */
+.subsection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 24px 0 12px;
+}
+
+.subsection-header h3 {
+  margin: 0;
+  font-size: 19px;
+}
+
 .stats-box {
   display: flex;
   gap: 10px;
@@ -259,6 +272,56 @@ button, input, select, textarea {
   cursor: pointer;
   padding: 4px 8px;
   color: var(--text-muted);
+}
+
+/* ---------- spendengelder ---------- */
+.stat-tile--income .stat-tile__value { color: #1a7a3a; }
+.stat-tile--expense .stat-tile__value { color: var(--danger); }
+
+.finance-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.finance-entry:first-of-type { border-top: none; }
+
+.finance-entry__main { flex: 1; }
+.finance-entry__desc { font-weight: 600; }
+.finance-entry__meta { font-size: 14px; color: var(--text-muted); }
+
+.finance-entry__amount {
+  font-weight: 700;
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+.finance-entry__amount--income { color: #1a7a3a; }
+.finance-entry__amount--expense { color: var(--danger); }
+
+.segmented {
+  display: flex;
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.segmented button {
+  flex: 1;
+  border: none;
+  background: var(--bg);
+  padding: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: var(--ua-blue);
+  color: white;
 }
 
 /* ---------- fahrten ---------- */

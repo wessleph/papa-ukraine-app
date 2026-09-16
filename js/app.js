@@ -20,6 +20,7 @@
 
     await Checklist.load();
     await Tracker.load();
+    await Finanzen.load();
     await Fahrten.load();
     await Notfall.load();
 

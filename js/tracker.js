@@ -17,15 +17,15 @@ const Tracker = (() => {
   }
 
   async function render() {
-    const trips = await DB.getAll("trips");
+    const categoryCount = new Set(donations.map((d) => d.category)).size;
     statsBox.innerHTML = `
       <div class="stat-tile">
         <div class="stat-tile__value">${donations.length}</div>
         <div class="stat-tile__label">Spenden gesamt</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-tile__value">${trips.length}</div>
-        <div class="stat-tile__label">Fahrten</div>
+        <div class="stat-tile__value">${categoryCount}</div>
+        <div class="stat-tile__label">Kategorien</div>
       </div>
     `;
 

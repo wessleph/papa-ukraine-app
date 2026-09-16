@@ -48,6 +48,10 @@ const UI = (() => {
     return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
 
+  function formatCurrency(amount) {
+    return amount.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+  }
+
   function todayIso() {
     const d = new Date();
     const tz = d.getTimezoneOffset();
@@ -63,5 +67,5 @@ const UI = (() => {
     });
   }
 
-  return { open, close, escapeHtml, formatDate, todayIso, fileToDataUrl };
+  return { open, close, escapeHtml, formatDate, formatCurrency, todayIso, fileToDataUrl };
 })();
