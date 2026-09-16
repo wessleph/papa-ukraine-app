@@ -1,5 +1,5 @@
 // Cache-first Service Worker für vollständige Offline-Nutzung des App-Shells.
-const CACHE_NAME = "ua-hilfe-shell-v4";
+const CACHE_NAME = "ua-hilfe-shell-v5";
 
 const SHELL_FILES = [
   "./",
