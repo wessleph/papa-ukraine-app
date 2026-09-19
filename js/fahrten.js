@@ -41,8 +41,71 @@ const Fahrten = (() => {
           <div class="trip-photos">
             ${t.photos.map((p) => `<img src="${p}" alt="">`).join("")}
           </div>` : ""}
+        <div class="trip-card__actions">
+          <button class="btn btn--primary btn--small" data-share-trip="${t.id}">Bericht teilen</button>
+        </div>
       </div>
     `).join("");
+  }
+
+  function buildReport(trip) {
+    const lines = [`Hilfsfahrt am ${UI.formatDate(trip.date)}`, `Ziel: ${trip.destination}`];
+    if (trip.notes) lines.push("", trip.notes);
+    return lines.join("\n");
+  }
+
+  async function photosToFiles(trip) {
+    return Promise.all((trip.photos || []).map(async (dataUrl, i) => {
+      const blob = await (await fetch(dataUrl)).blob();
+      return new File([blob], `fahrt-${trip.date}-${i + 1}.jpg`, { type: blob.type || "image/jpeg" });
+    }));
+  }
+
+  async function onShareTrip(tripId) {
+    const trip = trips.find((t) => t.id === tripId);
+    if (!trip) return;
+    const files = await photosToFiles(trip);
+    const photoHint = files.length
+      ? `${files.length} Foto${files.length === 1 ? " wird" : "s werden"} beim Teilen mitgesendet.`
+      : "Diese Fahrt hat keine Fotos.";
+
+    UI.open({
+      title: "Bericht teilen",
+      bodyHtml: `
+        <div class="form-row">
+          <label>Bericht (vor dem Teilen änderbar)</label>
+          <textarea id="f-report">${UI.escapeHtml(buildReport(trip))}</textarea>
+        </div>
+        <button type="button" id="f-copy-btn" class="btn btn--secondary btn--full">Nur Text kopieren</button>
+        <p class="form-hint">${photoHint} Tipp für Facebook: erst den Text kopieren, dann teilen und den Text im Beitrag einfügen.</p>
+      `,
+      confirmLabel: "Teilen",
+      onConfirm: async () => {
+        const text = document.getElementById("f-report").value.trim();
+        if (!navigator.share) {
+          await navigator.clipboard.writeText(text);
+          alert("Teilen wird auf diesem Gerät nicht unterstützt. Der Text wurde kopiert.");
+          return;
+        }
+        const shareData = { text };
+        if (files.length && navigator.canShare && navigator.canShare({ files })) shareData.files = files;
+        try {
+          await navigator.share(shareData);
+        } catch (err) {
+          if (err.name !== "AbortError") alert("Teilen hat nicht geklappt. Bitte \"Nur Text kopieren\" verwenden.");
+          return false;
+        }
+      }
+    });
+
+    document.getElementById("f-copy-btn").addEventListener("click", async (e) => {
+      try {
+        await navigator.clipboard.writeText(document.getElementById("f-report").value);
+        e.target.textContent = "Kopiert ✓";
+      } catch {
+        alert("Kopieren hat nicht geklappt.");
+      }
+    });
   }
 
   function renderPhotoPreview() {
@@ -70,7 +133,7 @@ const Fahrten = (() => {
             <textarea id="f-notes" placeholder="Beladung, Besonderheiten, Kontakte vor Ort…"></textarea>
             ${SpeechRecognitionApi ? '<button type="button" id="f-mic-btn" class="mic-btn" title="Diktieren">🎤</button>' : ""}
           </div>
-          ${SpeechRecognitionApi ? '<p class="mic-hint">Mikrofon antippen und sprechen, um den Bericht einzusprechen.</p>' : ""}
+          ${SpeechRecognitionApi ? '<p class="form-hint">Mikrofon antippen und sprechen, um den Bericht einzusprechen.</p>' : ""}
         </div>
         <div class="form-row">
           <label>Fotos (optional)</label>
@@ -156,6 +219,11 @@ const Fahrten = (() => {
   }
 
   content.addEventListener("click", async (e) => {
+    const share = e.target.closest("[data-share-trip]");
+    if (share) {
+      onShareTrip(Number(share.dataset.shareTrip));
+      return;
+    }
     const del = e.target.closest("[data-delete-trip]");
     if (!del) return;
     if (!confirm("Diese Fahrt wirklich löschen?")) return;
