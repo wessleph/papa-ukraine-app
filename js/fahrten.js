@@ -35,7 +35,7 @@ const Fahrten = (() => {
           <span class="trip-card__date">${UI.formatDate(t.date)}</span>
           <button class="icon-btn" data-delete-trip="${t.id}" title="Fahrt löschen">✕</button>
         </div>
-        <p class="trip-card__destination">${UI.escapeHtml(t.destination)}</p>
+        <p class="trip-card__destination">${UI.escapeHtml(tripRoute(t))}</p>
         ${t.notes ? `<p class="trip-card__notes">${UI.escapeHtml(t.notes)}</p>` : ""}
         ${(t.photos && t.photos.length) ? `
           <div class="trip-photos">
@@ -48,8 +48,12 @@ const Fahrten = (() => {
     `).join("");
   }
 
+  function tripRoute(trip) {
+    return trip.from ? `Von ${trip.from} nach ${trip.destination}` : trip.destination;
+  }
+
   function buildReport(trip) {
-    const lines = [`Hilfsfahrt am ${UI.formatDate(trip.date)}`, `Ziel: ${trip.destination}`];
+    const lines = [`Hilfsfahrt am ${UI.formatDate(trip.date)}`, trip.from ? tripRoute(trip) : `Ziel: ${trip.destination}`];
     if (trip.notes) lines.push("", trip.notes);
     return lines.join("\n");
   }
@@ -116,6 +120,8 @@ const Fahrten = (() => {
 
   function onAddTrip() {
     pendingPhotos = [];
+    const latestTripWithFrom = [...trips].filter((t) => t.from).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+    const lastFrom = latestTripWithFrom ? latestTripWithFrom.from : "";
     UI.open({
       title: "Neue Fahrt",
       bodyHtml: `
@@ -124,7 +130,11 @@ const Fahrten = (() => {
           <input type="date" id="f-date" value="${UI.todayIso()}">
         </div>
         <div class="form-row">
-          <label>Ziel / Route</label>
+          <label>Von</label>
+          <input type="text" id="f-from" value="${UI.escapeHtml(lastFrom)}" placeholder="z. B. Hamburg" required>
+        </div>
+        <div class="form-row">
+          <label>Nach</label>
           <input type="text" id="f-dest" placeholder="z. B. Lwiw über Krakau" required>
         </div>
         <div class="form-row">
@@ -143,15 +153,16 @@ const Fahrten = (() => {
       `,
       confirmLabel: "Speichern",
       onConfirm: async () => {
+        const from = document.getElementById("f-from").value.trim();
         const destination = document.getElementById("f-dest").value.trim();
         const date = document.getElementById("f-date").value || UI.todayIso();
         const notes = document.getElementById("f-notes").value.trim();
-        if (!destination) {
-          alert("Bitte Ziel / Route angeben.");
+        if (!from || !destination) {
+          alert("Bitte \"Von\" und \"Nach\" angeben.");
           return false;
         }
         if (isRecording) recognition.stop();
-        await DB.add("trips", { date, destination, notes, photos: pendingPhotos });
+        await DB.add("trips", { date, from, destination, notes, photos: pendingPhotos });
         pendingPhotos = [];
         await refresh();
       }
