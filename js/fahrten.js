@@ -81,7 +81,7 @@ const Fahrten = (() => {
           <textarea id="f-report">${UI.escapeHtml(buildReport(trip))}</textarea>
         </div>
         <button type="button" id="f-copy-btn" class="btn btn--secondary btn--full">Nur Text kopieren</button>
-        <p class="form-hint">${photoHint} Tipp für Facebook: erst den Text kopieren, dann teilen und den Text im Beitrag einfügen.</p>
+        <p class="form-hint">${photoHint} Beim Teilen wird der Text automatisch kopiert. In Facebook im Beitrag lange ins Textfeld tippen und "Einfügen" wählen.</p>
       `,
       confirmLabel: "Teilen",
       onConfirm: async () => {
@@ -93,6 +93,10 @@ const Fahrten = (() => {
         }
         const shareData = { text };
         if (files.length && navigator.canShare && navigator.canShare({ files })) shareData.files = files;
+        // Text vorab kopieren, damit er in Facebook nur noch eingefügt werden muss.
+        // Beide Aufrufe stehen bewusst direkt hintereinander, damit das Teilen noch
+        // von der Nutzeraktion ausgelöst gilt.
+        navigator.clipboard.writeText(text).catch(() => {});
         try {
           await navigator.share(shareData);
         } catch (err) {
