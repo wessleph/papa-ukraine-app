@@ -2,7 +2,8 @@
 // hebt das erklärte Element hervor (Leisten-Punkt oder ein Element im Bereich).
 // Mit "?tour" am Ende der Adresse lässt sich die Tour erneut anzeigen.
 const Tour = (() => {
-  const STORAGE_KEY = "ua-hilfe-tour-done";
+  // Die Endung erhöhen, damit die Tour allen Geräten noch einmal angezeigt wird.
+  const STORAGE_KEY = "ua-hilfe-tour-done-2";
   const APP_ICON = '<img src="icons/icon-192.png" alt="">';
   const NAV = "nav";
   const NAV_POINTER = "Unten in der Leiste markiert";
