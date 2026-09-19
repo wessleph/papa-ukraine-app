@@ -27,6 +27,12 @@
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js").catch(() => {});
     }
+
+    // Chrome vergibt dauerhaften Speicher nur nach einer Nutzeraktion; schützt die Daten
+    // vor automatischem Löschen bei Speichermangel.
+    if (navigator.storage && navigator.storage.persist) {
+      document.addEventListener("pointerdown", () => navigator.storage.persist(), { once: true });
+    }
   }
 
   init();

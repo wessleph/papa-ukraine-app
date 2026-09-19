@@ -230,8 +230,15 @@ button, input, select, textarea {
   margin-bottom: 16px;
 }
 
+.stats-box--money { flex-wrap: wrap; }
+
+.stats-box--money .stat-tile { flex: 1 1 calc(50% - 5px); }
+
+.stats-box--money .stat-tile--total { flex-basis: 100%; }
+
 .stat-tile {
   flex: 1;
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);

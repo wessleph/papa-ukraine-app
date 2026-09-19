@@ -4,6 +4,14 @@ const Finanzen = (() => {
   const content = document.getElementById("finanzen-content");
   const addBtn = document.getElementById("btn-add-finanzen");
 
+  const EXPENSE_CATEGORIES = [
+    "Sprit",
+    "Maut & Gebühren",
+    "Material & Verpackung",
+    "Verpflegung & Unterkunft",
+    "Sonstiges"
+  ];
+
   let entries = [];
 
   async function load() {
@@ -30,7 +38,7 @@ const Finanzen = (() => {
         <div class="stat-tile__value">${UI.formatCurrency(expense)}</div>
         <div class="stat-tile__label">Ausgaben</div>
       </div>
-      <div class="stat-tile">
+      <div class="stat-tile stat-tile--total">
         <div class="stat-tile__value">${UI.formatCurrency(balance)}</div>
         <div class="stat-tile__label">Saldo</div>
       </div>
@@ -47,8 +55,8 @@ const Finanzen = (() => {
         ${sorted.map((e) => `
           <div class="finance-entry">
             <div class="finance-entry__main">
-              <div class="finance-entry__desc">${UI.escapeHtml(e.description)}</div>
-              <div class="finance-entry__meta">${UI.formatDate(e.date)}</div>
+              <div class="finance-entry__desc">${UI.escapeHtml(entryTitle(e))}</div>
+              <div class="finance-entry__meta">${UI.escapeHtml(entryMeta(e))}</div>
             </div>
             <div class="finance-entry__amount finance-entry__amount--${e.type === "einnahme" ? "income" : "expense"}">
               ${e.type === "einnahme" ? "+" : "−"} ${UI.formatCurrency(e.amount)}
@@ -58,6 +66,17 @@ const Finanzen = (() => {
         `).join("")}
       </div>
     `;
+  }
+
+  function entryTitle(e) {
+    return e.description || e.category || (e.type === "einnahme" ? "Einnahme" : "Ausgabe");
+  }
+
+  function entryMeta(e) {
+    const parts = [UI.formatDate(e.date)];
+    if (e.category && e.category !== entryTitle(e)) parts.push(e.category);
+    if (e.donor) parts.push(`von ${e.donor}`);
+    return parts.join(" · ");
   }
 
   function onAddEntry() {
@@ -77,9 +96,20 @@ const Finanzen = (() => {
           <label>Betrag (€)</label>
           <input type="number" id="f-amount" inputmode="decimal" step="0.01" min="0" placeholder="z. B. 50" required>
         </div>
+        <div class="form-row" id="f-donor-row">
+          <label>Spender (optional)</label>
+          <input type="text" id="f-donor" placeholder="z. B. Familie Müller">
+        </div>
+        <div class="form-row" id="f-category-row" hidden>
+          <label>Kategorie</label>
+          <select id="f-category">
+            <option value="">Bitte wählen…</option>
+            ${EXPENSE_CATEGORIES.map((c) => `<option value="${UI.escapeHtml(c)}">${UI.escapeHtml(c)}</option>`).join("")}
+          </select>
+        </div>
         <div class="form-row">
-          <label>Beschreibung</label>
-          <input type="text" id="f-desc" placeholder="z. B. Spende von Nachbarn / Tanken" required>
+          <label>Beschreibung (optional)</label>
+          <input type="text" id="f-desc" placeholder="z. B. Spendenaktion / Tankstelle Krakau">
         </div>
         <div class="form-row">
           <label>Datum</label>
@@ -90,12 +120,21 @@ const Finanzen = (() => {
       onConfirm: async () => {
         const amount = parseFloat(document.getElementById("f-amount").value);
         const description = document.getElementById("f-desc").value.trim();
+        const donor = document.getElementById("f-donor").value.trim();
+        const category = document.getElementById("f-category").value;
         const date = document.getElementById("f-date").value || UI.todayIso();
-        if (!amount || amount <= 0 || !description) {
-          alert("Bitte Betrag und Beschreibung angeben.");
+        if (!amount || amount <= 0) {
+          alert("Bitte einen Betrag angeben.");
           return false;
         }
-        await DB.add("finances", { type: selectedType, amount, description, date });
+        if (selectedType === "ausgabe" && !category) {
+          alert("Bitte eine Kategorie wählen.");
+          return false;
+        }
+        const entry = { type: selectedType, amount, description, date };
+        if (selectedType === "einnahme" && donor) entry.donor = donor;
+        if (selectedType === "ausgabe") entry.category = category;
+        await DB.add("finances", entry);
         await refresh();
       }
     });
@@ -105,6 +144,8 @@ const Finanzen = (() => {
       if (!btn) return;
       selectedType = btn.dataset.type;
       document.querySelectorAll("#f-type-toggle button").forEach((b) => b.classList.toggle("active", b === btn));
+      document.getElementById("f-donor-row").hidden = selectedType !== "einnahme";
+      document.getElementById("f-category-row").hidden = selectedType !== "ausgabe";
     });
   }
 
