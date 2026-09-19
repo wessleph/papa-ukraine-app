@@ -50,6 +50,7 @@ const Tracker = (() => {
             <div class="donation-entry__desc">${UI.escapeHtml(d.description)}</div>
             <div class="donation-entry__meta">${UI.formatDate(d.date)}${d.source === "checkliste" ? " · aus Checkliste" : ""}</div>
           </div>
+          <button class="icon-btn" data-edit-donation="${d.id}" title="Eintrag bearbeiten">✎</button>
           <button class="icon-btn" data-delete-donation="${d.id}" title="Eintrag löschen">✕</button>
         </div>
       `).join("");
@@ -71,25 +72,25 @@ const Tracker = (() => {
     return categories.map((c) => c.name);
   }
 
-  async function onAddDonation() {
+  async function openDonationForm(existing = null) {
     const categoryNames = await getCategoryNames();
     const optionsHtml = categoryNames.map((n) => `<option value="${UI.escapeHtml(n)}">`).join("");
 
     UI.open({
-      title: "Spende manuell erfassen",
+      title: existing ? "Eintrag bearbeiten" : "Spende manuell erfassen",
       bodyHtml: `
         <div class="form-row">
           <label>Kategorie</label>
-          <input type="text" id="f-cat" list="f-cat-list" placeholder="z. B. Kleidung" required>
+          <input type="text" id="f-cat" list="f-cat-list" placeholder="z. B. Kleidung" value="${UI.escapeHtml(existing && existing.category)}" required>
           <datalist id="f-cat-list">${optionsHtml}</datalist>
         </div>
         <div class="form-row">
           <label>Menge / Beschreibung</label>
-          <input type="text" id="f-desc" placeholder="z. B. 2 Kisten Konserven" required>
+          <input type="text" id="f-desc" placeholder="z. B. 2 Kisten Konserven" value="${UI.escapeHtml(existing && existing.description)}" required>
         </div>
         <div class="form-row">
           <label>Datum</label>
-          <input type="date" id="f-date" value="${UI.todayIso()}">
+          <input type="date" id="f-date" value="${existing ? existing.date : UI.todayIso()}">
         </div>
       `,
       confirmLabel: "Speichern",
@@ -101,13 +102,22 @@ const Tracker = (() => {
           alert("Bitte Kategorie und Beschreibung angeben.");
           return false;
         }
-        await DB.add("donations", { category, description, date, source: "manuell" });
+        if (existing) {
+          await DB.put("donations", { ...existing, category, description, date });
+        } else {
+          await DB.add("donations", { category, description, date, source: "manuell" });
+        }
         await refresh();
       }
     });
   }
 
   content.addEventListener("click", async (e) => {
+    const edit = e.target.closest("[data-edit-donation]");
+    if (edit) {
+      openDonationForm(donations.find((d) => d.id === Number(edit.dataset.editDonation)));
+      return;
+    }
     const del = e.target.closest("[data-delete-donation]");
     if (!del) return;
     if (!confirm("Diesen Spenden-Eintrag wirklich löschen?")) return;
@@ -115,7 +125,7 @@ const Tracker = (() => {
     await refresh();
   });
 
-  addBtn.addEventListener("click", onAddDonation);
+  addBtn.addEventListener("click", () => openDonationForm());
 
   return { load, refresh };
 })();

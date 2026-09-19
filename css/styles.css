@@ -703,6 +703,27 @@ button, input, select, textarea {
   margin-top: 8px;
 }
 
+.photo-preview { position: relative; }
+
+.photo-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--danger);
+  color: white;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .photo-preview-row img {
   width: 64px;
   height: 64px;

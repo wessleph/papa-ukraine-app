@@ -61,6 +61,7 @@ const Finanzen = (() => {
             <div class="finance-entry__amount finance-entry__amount--${e.type === "einnahme" ? "income" : "expense"}">
               ${e.type === "einnahme" ? "+" : "−"} ${UI.formatCurrency(e.amount)}
             </div>
+            <button class="icon-btn" data-edit-finance="${e.id}" title="Eintrag bearbeiten">✎</button>
             <button class="icon-btn" data-delete-finance="${e.id}" title="Eintrag löschen">✕</button>
           </div>
         `).join("")}
@@ -79,41 +80,42 @@ const Finanzen = (() => {
     return parts.join(" · ");
   }
 
-  function onAddEntry() {
-    let selectedType = "einnahme";
+  function openEntryForm(existing = null) {
+    let selectedType = existing ? existing.type : "einnahme";
+    const isIncome = selectedType === "einnahme";
 
     UI.open({
-      title: "Spendengeld erfassen",
+      title: existing ? "Eintrag bearbeiten" : "Spendengeld erfassen",
       bodyHtml: `
         <div class="form-row">
           <label>Art</label>
           <div class="segmented" id="f-type-toggle">
-            <button type="button" data-type="einnahme" class="active">Einnahme</button>
-            <button type="button" data-type="ausgabe">Ausgabe</button>
+            <button type="button" data-type="einnahme" class="${isIncome ? "active" : ""}">Einnahme</button>
+            <button type="button" data-type="ausgabe" class="${isIncome ? "" : "active"}">Ausgabe</button>
           </div>
         </div>
         <div class="form-row">
           <label>Betrag (€)</label>
-          <input type="number" id="f-amount" inputmode="decimal" step="0.01" min="0" placeholder="z. B. 50" required>
+          <input type="number" id="f-amount" inputmode="decimal" step="0.01" min="0" placeholder="z. B. 50" value="${existing ? existing.amount : ""}" required>
         </div>
-        <div class="form-row" id="f-donor-row">
+        <div class="form-row" id="f-donor-row" ${isIncome ? "" : "hidden"}>
           <label>Spender (optional)</label>
-          <input type="text" id="f-donor" placeholder="z. B. Familie Müller">
+          <input type="text" id="f-donor" placeholder="z. B. Familie Müller" value="${UI.escapeHtml(existing && existing.donor)}">
         </div>
-        <div class="form-row" id="f-category-row" hidden>
+        <div class="form-row" id="f-category-row" ${isIncome ? "hidden" : ""}>
           <label>Kategorie</label>
           <select id="f-category">
             <option value="">Bitte wählen…</option>
-            ${EXPENSE_CATEGORIES.map((c) => `<option value="${UI.escapeHtml(c)}">${UI.escapeHtml(c)}</option>`).join("")}
+            ${EXPENSE_CATEGORIES.map((c) => `<option value="${UI.escapeHtml(c)}" ${existing && existing.category === c ? "selected" : ""}>${UI.escapeHtml(c)}</option>`).join("")}
           </select>
         </div>
         <div class="form-row">
           <label>Beschreibung (optional)</label>
-          <input type="text" id="f-desc" placeholder="z. B. Spendenaktion / Tankstelle Krakau">
+          <input type="text" id="f-desc" placeholder="z. B. Spendenaktion / Tankstelle Krakau" value="${UI.escapeHtml(existing && existing.description)}">
         </div>
         <div class="form-row">
           <label>Datum</label>
-          <input type="date" id="f-date" value="${UI.todayIso()}">
+          <input type="date" id="f-date" value="${existing ? existing.date : UI.todayIso()}">
         </div>
       `,
       confirmLabel: "Speichern",
@@ -134,7 +136,11 @@ const Finanzen = (() => {
         const entry = { type: selectedType, amount, description, date };
         if (selectedType === "einnahme" && donor) entry.donor = donor;
         if (selectedType === "ausgabe") entry.category = category;
-        await DB.add("finances", entry);
+        if (existing) {
+          await DB.put("finances", { ...entry, id: existing.id });
+        } else {
+          await DB.add("finances", entry);
+        }
         await refresh();
       }
     });
@@ -150,6 +156,11 @@ const Finanzen = (() => {
   }
 
   content.addEventListener("click", async (e) => {
+    const edit = e.target.closest("[data-edit-finance]");
+    if (edit) {
+      openEntryForm(entries.find((entry) => entry.id === Number(edit.dataset.editFinance)));
+      return;
+    }
     const del = e.target.closest("[data-delete-finance]");
     if (!del) return;
     if (!confirm("Diesen Eintrag wirklich löschen?")) return;
@@ -157,7 +168,7 @@ const Finanzen = (() => {
     await refresh();
   });
 
-  addBtn.addEventListener("click", onAddEntry);
+  addBtn.addEventListener("click", () => openEntryForm());
 
   return { load, refresh };
 })();

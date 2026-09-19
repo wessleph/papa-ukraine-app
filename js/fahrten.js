@@ -33,7 +33,10 @@ const Fahrten = (() => {
       <div class="trip-card">
         <div class="trip-card__header">
           <span class="trip-card__date">${UI.formatDate(t.date)}</span>
-          <button class="icon-btn" data-delete-trip="${t.id}" title="Fahrt löschen">✕</button>
+          <span>
+            <button class="icon-btn" data-edit-trip="${t.id}" title="Fahrt bearbeiten">✎</button>
+            <button class="icon-btn" data-delete-trip="${t.id}" title="Fahrt löschen">✕</button>
+          </span>
         </div>
         <p class="trip-card__destination">${UI.escapeHtml(tripRoute(t))}</p>
         ${t.notes ? `<p class="trip-card__notes">${UI.escapeHtml(t.notes)}</p>` : ""}
@@ -119,32 +122,39 @@ const Fahrten = (() => {
   function renderPhotoPreview() {
     const row = document.getElementById("f-photo-preview");
     if (!row) return;
-    row.innerHTML = pendingPhotos.map((p) => `<img src="${p}" alt="">`).join("");
+    row.innerHTML = pendingPhotos.map((p, i) => `
+      <div class="photo-preview">
+        <img src="${p}" alt="">
+        <button type="button" class="photo-remove" data-remove-photo="${i}" title="Foto entfernen">✕</button>
+      </div>
+    `).join("");
   }
 
-  function onAddTrip() {
-    pendingPhotos = [];
+  function openTripForm(existing = null) {
+    pendingPhotos = existing ? [...(existing.photos || [])] : [];
     const latestTripWithFrom = [...trips].filter((t) => t.from).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
-    const lastFrom = latestTripWithFrom ? latestTripWithFrom.from : "";
+    const startValue = existing ? (existing.from || "") : (latestTripWithFrom ? latestTripWithFrom.from : "");
+    // Ältere Fahrten ohne "Von" lassen sich auch ohne Startort speichern.
+    const fromRequired = !existing || Boolean(existing.from);
     UI.open({
-      title: "Neue Fahrt",
+      title: existing ? "Fahrt bearbeiten" : "Neue Fahrt",
       bodyHtml: `
         <div class="form-row">
           <label>Datum</label>
-          <input type="date" id="f-date" value="${UI.todayIso()}">
+          <input type="date" id="f-date" value="${existing ? existing.date : UI.todayIso()}">
         </div>
         <div class="form-row">
           <label>Von</label>
-          <input type="text" id="f-from" value="${UI.escapeHtml(lastFrom)}" placeholder="z. B. Hamburg" required>
+          <input type="text" id="f-from" value="${UI.escapeHtml(startValue)}" placeholder="z. B. Hamburg" required>
         </div>
         <div class="form-row">
           <label>Nach</label>
-          <input type="text" id="f-dest" placeholder="z. B. Lwiw über Krakau" required>
+          <input type="text" id="f-dest" placeholder="z. B. Lwiw über Krakau" value="${UI.escapeHtml(existing && existing.destination)}" required>
         </div>
         <div class="form-row">
           <label>Notizen</label>
           <div class="textarea-with-mic">
-            <textarea id="f-notes" placeholder="Beladung, Besonderheiten, Kontakte vor Ort…"></textarea>
+            <textarea id="f-notes" placeholder="Beladung, Besonderheiten, Kontakte vor Ort…">${UI.escapeHtml(existing && existing.notes)}</textarea>
             ${SpeechRecognitionApi ? '<button type="button" id="f-mic-btn" class="mic-btn" title="Diktieren">🎤</button>' : ""}
           </div>
           ${SpeechRecognitionApi ? '<p class="form-hint">Mikrofon antippen und sprechen, um den Bericht einzusprechen.</p>' : ""}
@@ -161,12 +171,19 @@ const Fahrten = (() => {
         const destination = document.getElementById("f-dest").value.trim();
         const date = document.getElementById("f-date").value || UI.todayIso();
         const notes = document.getElementById("f-notes").value.trim();
-        if (!from || !destination) {
-          alert("Bitte \"Von\" und \"Nach\" angeben.");
+        if ((fromRequired && !from) || !destination) {
+          alert(fromRequired ? "Bitte \"Von\" und \"Nach\" angeben." : "Bitte \"Nach\" angeben.");
           return false;
         }
         if (isRecording) recognition.stop();
-        await DB.add("trips", { date, from, destination, notes, photos: pendingPhotos });
+        if (existing) {
+          const updated = { ...existing, date, destination, notes, photos: pendingPhotos };
+          if (from) updated.from = from;
+          else delete updated.from;
+          await DB.put("trips", updated);
+        } else {
+          await DB.add("trips", { date, from, destination, notes, photos: pendingPhotos });
+        }
         pendingPhotos = [];
         await refresh();
       }
@@ -184,6 +201,14 @@ const Fahrten = (() => {
       }
       renderPhotoPreview();
     });
+
+    document.getElementById("f-photo-preview").addEventListener("click", (e) => {
+      const remove = e.target.closest("[data-remove-photo]");
+      if (!remove) return;
+      pendingPhotos.splice(Number(remove.dataset.removePhoto), 1);
+      renderPhotoPreview();
+    });
+    renderPhotoPreview();
 
     const micBtn = document.getElementById("f-mic-btn");
     if (micBtn) micBtn.addEventListener("click", () => toggleDictation(micBtn));
@@ -239,6 +264,11 @@ const Fahrten = (() => {
       onShareTrip(Number(share.dataset.shareTrip));
       return;
     }
+    const edit = e.target.closest("[data-edit-trip]");
+    if (edit) {
+      openTripForm(trips.find((t) => t.id === Number(edit.dataset.editTrip)));
+      return;
+    }
     const del = e.target.closest("[data-delete-trip]");
     if (!del) return;
     if (!confirm("Diese Fahrt wirklich löschen?")) return;
@@ -246,7 +276,7 @@ const Fahrten = (() => {
     await refresh();
   });
 
-  addBtn.addEventListener("click", onAddTrip);
+  addBtn.addEventListener("click", () => openTripForm());
 
   return { load, refresh };
 })();

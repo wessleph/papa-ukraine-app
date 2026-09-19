@@ -73,7 +73,10 @@ const Notfall = (() => {
         <div class="contact-card">
           <div class="category-card__header">
             <h3 class="category-card__title">${UI.escapeHtml(c.name)}</h3>
-            <button class="icon-btn" data-delete-contact="${c.id}" title="Kontakt löschen">✕</button>
+            <span>
+              <button class="icon-btn" data-edit-contact="${c.id}" title="Kontakt bearbeiten">✎</button>
+              <button class="icon-btn" data-delete-contact="${c.id}" title="Kontakt löschen">✕</button>
+            </span>
           </div>
           ${c.note ? `<p class="info-card__sub">${UI.escapeHtml(c.note)}</p>` : ""}
           ${callRow("Telefon", c.number)}
@@ -87,24 +90,24 @@ const Notfall = (() => {
       <button id="btn-add-contact" class="btn btn--primary btn--full">+ Eigenen Kontakt hinzufügen</button>
     `;
 
-    document.getElementById("btn-add-contact").addEventListener("click", onAddContact);
+    document.getElementById("btn-add-contact").addEventListener("click", () => openContactForm());
   }
 
-  function onAddContact() {
+  function openContactForm(existing = null) {
     UI.open({
-      title: "Eigenen Kontakt hinzufügen",
+      title: existing ? "Kontakt bearbeiten" : "Eigenen Kontakt hinzufügen",
       bodyHtml: `
         <div class="form-row">
           <label>Name</label>
-          <input type="text" id="f-name" placeholder="z. B. Ansprechpartner Grenze" required>
+          <input type="text" id="f-name" placeholder="z. B. Ansprechpartner Grenze" value="${UI.escapeHtml(existing && existing.name)}" required>
         </div>
         <div class="form-row">
           <label>Telefonnummer</label>
-          <input type="tel" id="f-number" placeholder="+380…" required>
+          <input type="tel" id="f-number" placeholder="+380…" value="${UI.escapeHtml(existing && existing.number)}" required>
         </div>
         <div class="form-row">
           <label>Notiz (optional)</label>
-          <input type="text" id="f-note" placeholder="z. B. spricht Deutsch">
+          <input type="text" id="f-note" placeholder="z. B. spricht Deutsch" value="${UI.escapeHtml(existing && existing.note)}">
         </div>
       `,
       confirmLabel: "Speichern",
@@ -116,13 +119,22 @@ const Notfall = (() => {
           alert("Bitte Name und Telefonnummer angeben.");
           return false;
         }
-        await DB.add("contacts", { name, number, note });
+        if (existing) {
+          await DB.put("contacts", { id: existing.id, name, number, note });
+        } else {
+          await DB.add("contacts", { name, number, note });
+        }
         await refresh();
       }
     });
   }
 
   content.addEventListener("click", async (e) => {
+    const edit = e.target.closest("[data-edit-contact]");
+    if (edit) {
+      openContactForm(contacts.find((c) => c.id === Number(edit.dataset.editContact)));
+      return;
+    }
     const del = e.target.closest("[data-delete-contact]");
     if (!del) return;
     if (!confirm("Diesen Kontakt wirklich löschen?")) return;
