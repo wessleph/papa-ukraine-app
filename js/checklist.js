@@ -4,11 +4,11 @@ const Checklist = (() => {
   const addCategoryBtn = document.getElementById("btn-add-category");
 
   const DEFAULT_CATEGORIES = [
+    { name: "Elektronik", items: ["Powerbanks", "Batterien", "Taschenlampen", "Ladekabel"] },
+    { name: "Werkzeug", items: ["Hammer", "Zangen", "Schraubendreher", "Schraubenschlüssel", "Akkuschrauber"] },
     { name: "Kleidung", items: ["Winterjacken", "Pullover", "Socken", "Unterwäsche", "Schuhe", "Kinderkleidung"] },
     { name: "Medizin", items: ["Verbandsmaterial", "Schmerzmittel", "Erste-Hilfe-Sets", "Desinfektionsmittel"] },
-    { name: "Hygieneartikel", items: ["Windeln", "Damenhygieneartikel", "Zahnpasta & Zahnbürsten", "Seife", "Toilettenpapier"] },
-    { name: "Lebensmittel", items: ["Konserven", "Trockennahrung", "Babynahrung", "Wasser", "Tee & Kaffee"] },
-    { name: "Sonstiges", items: ["Taschenlampen", "Batterien", "Powerbanks", "Decken", "Schlafsäcke"] }
+    { name: "Sonstiges", items: ["Decken", "Schlafsäcke"] }
   ];
 
   let categories = [];
