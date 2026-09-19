@@ -1,10 +1,13 @@
-// Einmalige Erklär-Tour beim ersten Öffnen der App.
+// Erklär-Tour beim ersten Öffnen der App. Bei den Bereichs-Schritten wird der echte
+// Bildschirm gezeigt und der passende Punkt in der unteren Leiste hervorgehoben.
+// Mit "?tour" am Ende der Adresse lässt sich die Tour erneut anzeigen.
 const Tour = (() => {
   const STORAGE_KEY = "ua-hilfe-tour-done";
+  const APP_ICON = '<img src="icons/icon-192.png" alt="">';
 
   const STEPS = [
     {
-      icon: '<img src="icons/icon-192.png" alt="">',
+      icon: APP_ICON,
       title: "Willkommen!",
       paragraphs: [
         "Diese App unterstützt dich bei deinen Hilfsfahrten in die Ukraine.",
@@ -12,7 +15,8 @@ const Tour = (() => {
       ]
     },
     {
-      icon: "📋",
+      view: "checkliste",
+      spot: true,
       title: "Checkliste",
       paragraphs: [
         "Hier stehen die Sachspenden, sortiert nach Kategorien wie Kleidung oder Medizin.",
@@ -21,7 +25,8 @@ const Tour = (() => {
       ]
     },
     {
-      icon: "📦",
+      view: "tracker",
+      spot: true,
       title: "Tracker",
       paragraphs: [
         "<strong>Sachspenden:</strong> Alles, was du abgehakt oder selbst eingetragen hast, mit Übersicht pro Kategorie.",
@@ -29,7 +34,8 @@ const Tour = (() => {
       ]
     },
     {
-      icon: "🚐",
+      view: "fahrten",
+      spot: true,
       title: "Fahrten",
       paragraphs: [
         "Halte jede Hilfsfahrt fest: Datum, von wo nach wo, Notizen und Fotos.",
@@ -38,7 +44,8 @@ const Tour = (() => {
       ]
     },
     {
-      icon: "🆘",
+      view: "notfall",
+      spot: true,
       title: "Notfall",
       paragraphs: [
         "Wichtige Notrufnummern für die Ukraine und die deutsche Botschaft, jeweils mit einem Anrufen-Knopf.",
@@ -46,7 +53,8 @@ const Tour = (() => {
       ]
     },
     {
-      icon: '<img src="icons/icon-192.png" alt="">',
+      view: "checkliste",
+      icon: APP_ICON,
       title: "Alles bereit",
       paragraphs: [
         "Alle Eingaben werden sofort auf diesem Handy gespeichert. Die App funktioniert auch ohne Internet, nur für die Spracheingabe braucht das Handy meist Empfang.",
@@ -56,8 +64,10 @@ const Tour = (() => {
   ];
 
   const overlay = document.getElementById("tour-overlay");
+  const spotEl = document.getElementById("tour-spot");
   const iconEl = document.getElementById("tour-icon");
   const titleEl = document.getElementById("tour-title");
+  const pointerEl = document.getElementById("tour-pointer");
   const textEl = document.getElementById("tour-text");
   const dotsEl = document.getElementById("tour-dots");
   const skipBtn = document.getElementById("tour-skip");
@@ -66,10 +76,32 @@ const Tour = (() => {
 
   let index = 0;
 
+  function navButton(view) {
+    return document.querySelector(`.nav-btn[data-view="${view}"]`);
+  }
+
+  function positionSpot(view) {
+    const pad = 4;
+    const rect = navButton(view).getBoundingClientRect();
+    spotEl.style.left = `${rect.left - pad}px`;
+    spotEl.style.top = `${rect.top - pad}px`;
+    spotEl.style.width = `${rect.width + pad * 2}px`;
+    spotEl.style.height = `${rect.height + pad * 2}px`;
+  }
+
   function render() {
     const step = STEPS[index];
     const isLast = index === STEPS.length - 1;
-    iconEl.innerHTML = step.icon;
+
+    if (step.view) navButton(step.view).click();
+
+    overlay.classList.toggle("tour-overlay--spot", Boolean(step.spot));
+    spotEl.hidden = !step.spot;
+    pointerEl.hidden = !step.spot;
+    if (step.spot) positionSpot(step.view);
+
+    iconEl.hidden = !step.icon;
+    iconEl.innerHTML = step.icon || "";
     titleEl.textContent = step.title;
     textEl.innerHTML = step.paragraphs.map((p) => `<p>${p}</p>`).join("");
     dotsEl.innerHTML = STEPS.map((_, i) => `<span class="${i === index ? "active" : ""}"></span>`).join("");
@@ -80,6 +112,7 @@ const Tour = (() => {
 
   function finish() {
     overlay.hidden = true;
+    navButton("checkliste").click();
   }
 
   nextBtn.addEventListener("click", () => {
@@ -98,14 +131,21 @@ const Tour = (() => {
 
   skipBtn.addEventListener("click", finish);
 
-  function startIfFirstTime() {
-    if (localStorage.getItem(STORAGE_KEY)) return;
+  window.addEventListener("resize", () => {
+    const step = STEPS[index];
+    if (!overlay.hidden && step.spot) positionSpot(step.view);
+  });
+
+  function startIfNeeded() {
+    const forced = new URLSearchParams(location.search).has("tour");
+    if (!forced && localStorage.getItem(STORAGE_KEY)) return;
     // Sofort als gesehen markieren, damit die Tour wirklich nur einmal erscheint.
     localStorage.setItem(STORAGE_KEY, "1");
+    if (forced) history.replaceState(null, "", location.pathname);
     index = 0;
     render();
     overlay.hidden = false;
   }
 
-  return { startIfFirstTime };
+  return { startIfNeeded };
 })();

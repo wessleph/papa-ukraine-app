@@ -38,7 +38,7 @@
     await Fahrten.load();
     await Notfall.load();
 
-    Tour.startIfFirstTime();
+    Tour.startIfNeeded();
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js").catch(() => {});
