@@ -73,8 +73,9 @@ const Tour = (() => {
     },
     {
       view: "fahrten",
-      target: () => $("[data-share-trip]") || $("#fahrten-content .empty-state"),
-      pointer: () => ($("[data-share-trip]") ? "" : "Der Knopf erscheint, sobald eine Fahrt gespeichert ist."),
+      showDemoTrip: true,
+      target: () => $("[data-share-trip]") || $("[data-tour-share-demo]"),
+      pointer: () => ($("[data-tour-share-demo]") ? "Beispiel: So sieht es bei jeder gespeicherten Fahrt aus" : ""),
       title: "Bericht teilen",
       paragraphs: [
         "Zu jeder gespeicherten Fahrt gibt es <strong>Bericht teilen</strong>. Text und Fotos gehen direkt an Facebook, WhatsApp und Co.",
@@ -123,9 +124,22 @@ const Tour = (() => {
   const backBtn = document.getElementById("tour-back");
   const nextBtn = document.getElementById("tour-next");
 
+  // Beispiel-Fahrt für den Schritt "Bericht teilen", solange noch keine echte Fahrt existiert.
+  // Sie wird nur angezeigt, nicht gespeichert.
+  const DEMO_TRIP_HTML = `
+    <div class="trip-card">
+      <div class="trip-card__header"><span class="trip-card__date">Beispiel</span></div>
+      <p class="trip-card__destination">Von Hamburg nach Lwiw</p>
+      <p class="trip-card__notes">12 Kartons Kleidung und Verbandsmaterial übergeben.</p>
+      <div class="trip-card__actions">
+        <button class="btn btn--primary btn--small" data-tour-share-demo>Bericht teilen</button>
+      </div>
+    </div>`;
+
   let steps = [];
   let index = 0;
   let dialogOpenedByTour = false;
+  let fahrtenContentBackup = null;
 
   function navButton(view) {
     return $(`.nav-btn[data-view="${view}"]`);
@@ -136,10 +150,22 @@ const Tour = (() => {
     return step.target === NAV ? navButton(step.view) : step.target();
   }
 
-  function closeTourDialog() {
-    if (!dialogOpenedByTour) return;
-    dialogOpenedByTour = false;
-    document.getElementById("modal-cancel").click();
+  function showDemoTrip() {
+    if ($("[data-share-trip]")) return;
+    const content = document.getElementById("fahrten-content");
+    fahrtenContentBackup = content.innerHTML;
+    content.innerHTML = DEMO_TRIP_HTML;
+  }
+
+  function undoTourChanges() {
+    if (dialogOpenedByTour) {
+      dialogOpenedByTour = false;
+      document.getElementById("modal-cancel").click();
+    }
+    if (fahrtenContentBackup !== null) {
+      document.getElementById("fahrten-content").innerHTML = fahrtenContentBackup;
+      fahrtenContentBackup = null;
+    }
   }
 
   function positionSpot(target) {
@@ -213,13 +239,14 @@ const Tour = (() => {
     const step = steps[index];
     const isLast = index === steps.length - 1;
 
-    closeTourDialog();
+    undoTourChanges();
     if (step.view) navButton(step.view).click();
     window.scrollTo(0, 0);
     if (step.openFahrtDialog) {
       $("#btn-add-fahrt").click();
       dialogOpenedByTour = true;
     }
+    if (step.showDemoTrip) showDemoTrip();
 
     iconEl.hidden = !step.icon;
     iconEl.innerHTML = step.icon || "";
@@ -237,7 +264,7 @@ const Tour = (() => {
   }
 
   function finish() {
-    closeTourDialog();
+    undoTourChanges();
     overlay.hidden = true;
     navButton("checkliste").click();
     window.scrollTo(0, 0);
