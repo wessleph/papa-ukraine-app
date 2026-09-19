@@ -14,6 +14,20 @@
     btn.addEventListener("click", () => showView(btn.dataset.view));
   });
 
+  // Der Service Worker meldet, wenn im Hintergrund eine neue Version geladen wurde.
+  // Kurze Verzögerung, damit alle geänderten Dateien fertig im Cache liegen, bevor
+  // der Nutzer aktualisieren kann.
+  if ("serviceWorker" in navigator) {
+    const updateBanner = document.getElementById("update-banner");
+    let updateTimer = null;
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (!event.data || event.data.type !== "UPDATE_READY") return;
+      clearTimeout(updateTimer);
+      updateTimer = setTimeout(() => { updateBanner.hidden = false; }, 2000);
+    });
+    document.getElementById("update-banner-btn").addEventListener("click", () => location.reload());
+  }
+
   async function init() {
     const startView = localStorage.getItem(STORAGE_KEY) || "checkliste";
     showView(startView);

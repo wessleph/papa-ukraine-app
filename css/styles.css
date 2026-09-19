@@ -425,6 +425,30 @@ button, input, select, textarea {
   margin: 20px 0 8px;
 }
 
+/* ---------- update-hinweis ---------- */
+.update-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  max-width: 616px;
+  margin: 0 auto;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--ua-blue);
+  color: white;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.update-banner[hidden] { display: none; }
+
+.update-banner span { font-weight: 600; }
+
 /* ---------- modal ---------- */
 .modal-overlay {
   position: fixed;

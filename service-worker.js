@@ -1,7 +1,8 @@
 // Stale-while-revalidate Service Worker: App-Shell startet sofort aus dem Cache
 // (auch offline), im Hintergrund wird bei bestehender Verbindung automatisch
 // aktualisiert. Dadurch ist ein manuelles Hochzählen von CACHE_NAME bei
-// Code-Änderungen an bestehenden Dateien nicht mehr nötig.
+// Code-Änderungen an bestehenden Dateien nicht mehr nötig. Ändert sich dabei
+// eine Datei, meldet der Worker "UPDATE_READY" an die geöffnete App.
 const CACHE_NAME = "ua-hilfe-shell-v6";
 
 const SHELL_FILES = [
@@ -43,28 +44,51 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+async function differs(oldResponse, newResponse) {
+  const [a, b] = await Promise.all([
+    oldResponse.clone().arrayBuffer(),
+    newResponse.clone().arrayBuffer()
+  ]);
+  if (a.byteLength !== b.byteLength) return true;
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  return x.some((byte, i) => byte !== y[i]);
+}
+
+async function notifyUpdateReady() {
+  const clients = await self.clients.matchAll({ type: "window" });
+  clients.forEach((client) => client.postMessage({ type: "UPDATE_READY" }));
+}
+
+async function fetchAndCache(cache, request) {
+  // cache: "reload" erzwingt einen echten Netzwerk-Request statt einer
+  // Antwort aus dem HTTP-Cache des Browsers, damit Änderungen zuverlässig
+  // erkannt werden.
+  const response = await fetch(new Request(request, { cache: "reload" }));
+  if (response.ok) {
+    const old = await cache.match(request);
+    const changed = old ? await differs(old, response) : false;
+    await cache.put(request, response.clone());
+    if (changed) await notifyUpdateReady();
+  }
+  return response;
+}
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  const cachePromise = caches.open(CACHE_NAME);
+  const updatePromise = cachePromise
+    .then((cache) => fetchAndCache(cache, event.request))
+    .catch(() => null);
+
+  // Hält den Service Worker am Leben, bis der Cache im Hintergrund aktualisiert ist.
+  event.waitUntil(updatePromise);
+
   event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
+    cachePromise.then(async (cache) => {
       const cached = await cache.match(event.request);
-
-      // cache: "reload" erzwingt einen echten Netzwerk-Request statt einer
-      // Antwort aus dem HTTP-Cache des Browsers, damit Änderungen zuverlässig
-      // erkannt werden.
-      const networkFetch = fetch(new Request(event.request, { cache: "reload" }))
-        .then((response) => {
-          if (response.ok) cache.put(event.request, response.clone());
-          return response;
-        })
-        .catch(() => null);
-
-      if (cached) {
-        networkFetch; // Cache im Hintergrund aktualisieren, aber nicht abwarten
-        return cached;
-      }
-      return (await networkFetch) || Response.error();
+      return cached || (await updatePromise) || Response.error();
     })
   );
 });
